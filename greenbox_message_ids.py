@@ -1,0 +1,10 @@
+gb_wake_time = 83
+gb_wake_hours = 68
+gb_wake_hours_wknd = 100
+gb_wake_time_wknd = 115
+gb_lamps = [49, 50, 51]
+gb_water = 87
+gb_light_on = 79
+gb_unkown_ids = [102, 114, 84]
+gb_characteristic_uuid =  "0000ff05-0000-1000-8000-00805f9b34fb"
+gb_checksum_base = 35 # This might be the first octet of the MAC? Or just a magic number.

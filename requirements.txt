@@ -1,0 +1,5 @@
+bleak==0.22.3
+dbus-fast==2.44.1
+paho-mqtt==2.1.0
+PyBluez @ git+https://github.com/pybluez/pybluez.git@82cbba8a1ebd4c1e3442dfafd8581d58c50fa39e
+typing_extensions==4.13.2
