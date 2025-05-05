@@ -5,12 +5,12 @@ This program implements most communication functionality of the official GreenBo
 To facilitate communication, this runs asynchronously. 
 
 # Usage
-Usage is very straight-forward: 
+Usage is very straight-forward with a known MAC address ("XX:XX:XX:XX:XX:XX")
 ```
 from greenbox import GreenBox
 import asyncio
 async def run():
-    async with GreenBox("34:86:5d:19:58:b6") as box:
+    async with GreenBox("XX:XX:XX:XX:XX:XX") as box:
         await box.light_on()
 asyncio.run(run())
 ```
