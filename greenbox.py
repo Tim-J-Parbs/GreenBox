@@ -1,7 +1,7 @@
 import asyncio
 from bleak import BleakClient
 import os
-import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 from greenbox_message_ids import *
 
@@ -20,7 +20,8 @@ class GreenBox:
         self.wake_minutes_weekend_utc = 0
         self.hours_on_weekend = 0
         self.weekend_enabled = False
-        self.lamps_on = 0 # Don't know why this is sometimes > 1?
+        self.light_status = 0
+        self.light_on = False
         self.lamp_lvl = [0,0,0]
         self.water_lvl = 0
         self._data_store = {}
@@ -67,8 +68,27 @@ class GreenBox:
         if val_id in gb_lamps:
             self.lamp_lvl[gb_lamps.index(val_id)] = val
         if val_id == gb_light_on:
-            self.lamps_on = val
+            self.light_status = val
+            self.check_light_status()
 
+    def check_light_status(self):
+        """ Greenboxes do some funky stuff with their light.
+            If I'm not mistaken, they transmit a status '3' for their light_status in case they
+            followed their programming for the last period of time (weirdly 30h 10m). Otherwise they
+            transmit 0 or 1, for on or off."""
+        if self.light_status == 3:
+            now_utc = datetime.now(timezone.utc)
+            start_time = now_utc.replace(hour=self.wake_hours_utc, minute=self.wake_minutes_utc,
+                                         second=0, microsecond=0)
+            if start_time > now_utc:
+                # Go back a day if we haven’t reached the start yet but may be in active period
+                start_time -= timedelta(days=1)
+
+            duration = timedelta(hours=self.hours_on, minutes=0)
+            end_time = start_time + duration
+            self.light_on = start_time <= now_utc < end_time
+        else:
+            self.light_on = self.light_status
     def create_7b_message(self, data, control_id):
         """ Create a formatted 7b message to send to device."""
         value_high = data >> 8
@@ -103,13 +123,13 @@ class GreenBox:
         await self.write_to_status(msg)
         return
 
-    async def light_on(self):
+    async def turn_light_on(self):
         await self.write_to_status(self.create_7b_message(1, gb_light_on))
 
-    async def light_off(self):
+    async def turn_light_off(self):
         await self.write_to_status(self.create_7b_message(0, gb_light_on))
 
-    async def light_toggle(self):
+    async def toggle_light(self):
         await self.write_to_status(self.create_7b_message(not self.lamps_on, gb_light_on))
 
     async def set_wake_time_utc(self, hours, minutes):
@@ -135,19 +155,18 @@ class GreenBox:
         try:
             while True:
                 sender, data = await self._notification_queue.get()
-                timestamp = datetime.datetime.now().isoformat(sep=' ', timespec='milliseconds')
+                timestamp = datetime.now().isoformat(sep=' ', timespec='milliseconds')
                 self.proc_known_ids(data)
                 self.proc_all(data, timestamp)
         except asyncio.CancelledError:
             print("Notification processor stopped.")
 
-    async def update(self):
+    def update(self):
         """ CLI status screen """
         os.system('cls' if os.name == 'nt' else 'clear')
         self.show_status()
         if self._debug:
             self.show_all()
-        await asyncio.sleep(0.5)
 
     def show_status(self):
         time_str = (f"Wake time: {self.wake_hours_utc:02d}:{self.wake_minutes_utc:02d} (UTC)"
@@ -157,6 +176,7 @@ class GreenBox:
                 f" and Wake_time: {self.wake_hours_weekend_utc:02d}:{self.wake_minutes_weekend_utc:02d} (UTC)"
                 f" for {self.hours_on_weekend} hours on weekends")
         print(time_str)
+        print(f"Light is {'on' if self.light_on else 'off'}.")
         print("Lamps:")
         for i, l in enumerate(self.lamp_lvl):
             print(f'Lamp {i}: {l}')
@@ -194,7 +214,9 @@ class GreenBox:
             await self._client.start_notify(gb_characteristic_uuid,
                                            lambda s, d: self._notification_queue.put_nowait((s, d)))
             self._queue_worker = asyncio.create_task(self.process_incoming())
-            print("Connected, listening to device..")
+            print("Connected, waiting for data...")
+            await asyncio.sleep(2)
+            print("Now listening to device..")
         except Exception as Err:
             print(f"Unexpected error: {Err}")
             raise

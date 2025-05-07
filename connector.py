@@ -62,8 +62,8 @@ async def run_communication():
                     connector.toggle_light()
 
                 data = connector.get_data()
-                communicator.publish([data['water_lvl'], data['lamps_on']])
-
+                communicator.publish([data['water_lvl'], data['light_on']])
+                connector.update()
                 await asyncio.sleep(10)
             except asyncio.CancelledError:
                 break
