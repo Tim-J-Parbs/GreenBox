@@ -25,23 +25,23 @@ class GreenBox:
         self.light_on = False
         self.lamp_lvl = [0,0,0]
         self.water_lvl = 0
-        self.update_timestamp = None
+        self.timestamp = None
         self._data_store = {}
         self._debug = True
         self._device_address = device_address
         self._client = BleakClient(self._device_address)
-        self.timestamp()
+        self.update_timestamp()
         self._bt_write_lock = asyncio.Lock()
         self._notification_queue = asyncio.Queue()
 
         return
-    def timestamp(self):
-        self.update_timestamp = datetime.now().isoformat(sep=' ', timespec='milliseconds')
+    def update_timestamp(self):
+        self.timestamp = datetime.now().isoformat(sep=' ', timespec='milliseconds')
 
     def is_connected(self):
         delta = timedelta(seconds=self.timeout_seconds)
         now_utc = datetime.now(timezone.utc)
-        return (self.update_timestamp + delta) > now_utc
+        return (self.timestamp + delta) > now_utc
 
     def get_data(self) -> dict:
         value_dict= {
