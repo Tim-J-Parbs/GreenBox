@@ -17,6 +17,7 @@ class GreenBox:
         self.wake_minutes_utc = 0
         self.hours_on = 0
         self.wake_hours_weekend_utc = 0
+        self.timeout_seconds = 20
         self.wake_minutes_weekend_utc = 0
         self.hours_on_weekend = 0
         self.weekend_enabled = False
@@ -24,20 +25,31 @@ class GreenBox:
         self.light_on = False
         self.lamp_lvl = [0,0,0]
         self.water_lvl = 0
+        self.update_timestamp = None
         self._data_store = {}
         self._debug = True
         self._device_address = device_address
         self._client = BleakClient(self._device_address)
+        self.timestamp()
         self._bt_write_lock = asyncio.Lock()
         self._notification_queue = asyncio.Queue()
+
         return
+    def timestamp(self):
+        self.update_timestamp = datetime.now().isoformat(sep=' ', timespec='milliseconds')
+
+    def is_connected(self):
+        delta = timedelta(seconds=self.timeout_seconds)
+        now_utc = datetime.now(timezone.utc)
+        return (self.update_timestamp + delta) > now_utc
 
     def get_data(self) -> dict:
-        return {
+        value_dict= {
             k: getattr(self, k)
             for k, v in self.__dict__.items()
             if not k.startswith('_')
         }
+        value_dict['is_connected'] = self.is_connected()
 
     def proc_all(self, data, timestamp):
         # Data logging. Will be removed soon
@@ -51,6 +63,7 @@ class GreenBox:
                                                    "parsed": f"{parsed_id}, {parsed_val}"}
     def proc_known_ids(self, data):
         """ Parse currently readable data into human-readable form."""
+        # I should probably move all these values into timestamped containers to see if any go out of date.
         val_id, val = self.parse_7b_notification(data)
         if val_id == gb_wake_time:
             self.wake_hours_utc = val // 100
@@ -70,6 +83,7 @@ class GreenBox:
         if val_id == gb_light_on:
             self.light_status = val
             self.check_light_status()
+        self.update_timestamp()
 
     def check_light_status(self):
         """ Greenboxes do some funky stuff with their light.
@@ -130,7 +144,7 @@ class GreenBox:
         await self.write_to_status(self.create_7b_message(0, gb_light_on))
 
     async def toggle_light(self):
-        await self.write_to_status(self.create_7b_message(not self.lamps_on, gb_light_on))
+        await self.write_to_status(self.create_7b_message(not self.light_on, gb_light_on))
 
     async def set_wake_time_utc(self, hours, minutes):
         """ Control wake time (in UTC!) for device. """

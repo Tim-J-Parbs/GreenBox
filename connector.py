@@ -47,7 +47,7 @@ async def run_communication():
     communicator = Communicator(
         broker=MQTT_BROKER,
         command_topic=f"{base}command",
-        data_topics=[f"{base}water_lvl", f"{base}light_on"]
+        data_topics=[f"{base}water_lvl", f"{base}light_on", f"{base}is_connected"]
     )
     communicator.start()
 
@@ -62,7 +62,7 @@ async def run_communication():
                     connector.toggle_light()
 
                 data = connector.get_data()
-                communicator.publish([data['water_lvl'], data['light_on']])
+                communicator.publish([data['water_lvl'], data['light_on'], data['is_connected']])
                 await asyncio.sleep(10)
             except asyncio.CancelledError:
                 break
