@@ -36,7 +36,7 @@ class GreenBox:
 
         return
     def update_timestamp(self):
-        self.timestamp = datetime.now().isoformat(sep=' ', timespec='milliseconds')
+        self.timestamp = datetime.now(timezone.utc)
 
     def is_connected(self):
         delta = timedelta(seconds=self.timeout_seconds)
@@ -50,6 +50,7 @@ class GreenBox:
             if not k.startswith('_')
         }
         value_dict['is_connected'] = self.is_connected()
+        return value_dict
 
     def proc_all(self, data, timestamp):
         # Data logging. Will be removed soon
