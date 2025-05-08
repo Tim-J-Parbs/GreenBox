@@ -60,8 +60,8 @@ class GreenBox:
         else:
             parsed_id, parsed_val = self.parse_7b_notification(data)
             self._data_store[hex_data] = {"timestamp": timestamp, "first_timestamp": timestamp,
-                                                   "raw_val": f"{list(data)}, {hex_data}", "val_id":parsed_id,
-                                                   "parsed": f"{parsed_id}, {parsed_val}"}
+                                                   "raw_val": list(data), "val_id":parsed_id,
+                                                   "parsed": [parsed_id, parsed_val]}
     def proc_known_ids(self, data):
         """ Parse currently readable data into human-readable form."""
         # I should probably move all these values into timestamped containers to see if any go out of date.
@@ -103,7 +103,7 @@ class GreenBox:
             end_time = start_time + duration
             self.light_on = start_time <= now_utc < end_time
         else:
-            self.light_on = self.light_status
+            self.light_on = self.light_status == 1
     def create_7b_message(self, data, control_id):
         """ Create a formatted 7b message to send to device."""
         value_high = data >> 8
@@ -200,22 +200,20 @@ class GreenBox:
 
     def show_all(self):
         print('\n')
-        print(f"{'Fields':<5} | {'Added ':<10} | {'Updated ':<10}| {'Raw value':<10} | {'Parsed':<10}")
-        print("-" * 35)
         sorted_list = self._data_store.items()
-        for field, info in sorted_list:
-            if info['val_id'] not in gb_unkown_ids:
-                print(
-                    f"{field:<5} |  {info['timestamp']} | {info['first_timestamp']} | {info['raw_val']}| {info['parsed']}")
+        self.print_status(sorted_list, lambda x: x['val_id'] not in gb_unkown_ids)
         print('\nUnknown data:')
-        print(f"{'Field':<5} | {'Added ':<10} | {'Updated ':<10}| {'Raw value':<10} | {'Parsed':<10}")
-        print("-" * 35)
-        sorted_list = self._data_store.items()
-        for field, info in sorted_list:
-            if info['val_id'] in gb_unkown_ids:
-                print(
-                    f"{field:<5} |  {info['timestamp']} | {info['first_timestamp']} | {info['raw_val']}| {info['parsed']}")
+        self.print_status(sorted_list, lambda x: x['val_id'] in gb_unkown_ids)
 
+    def print_status(self, status_list, condition):
+        header = f"{'Fields':<12} | {'Added ':<23} | {'Updated ':<24}| {'Raw value':<25} | {'Command':<14}"
+        print(header)
+        print("-" * len(header))
+        for field, info in status_list:
+            if condition(info):
+                raw_info =[f"{int(i):3d}" for i in info['raw_val']]
+                parsed_info = [f"{int(i):3d}" for i in info['parsed']]
+                print(f"{field} | {info['first_timestamp']} | {info['timestamp']} | [{' '.join(raw_info)}] | {' -> '.join(parsed_info)}")
     async def scan_uuids(self):
         """ Utility which scans open UUIDs. Unused, but nice to have. """
         for service in self._client.services:
