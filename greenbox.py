@@ -91,6 +91,10 @@ class GreenBox:
             If I'm not mistaken, they transmit a status '3' for their light_status in case they
             followed their programming for the last period of time (weirdly 30h 10m). Otherwise they
             transmit 0 or 1, for on or off."""
+        # If not connected, return -1
+        if not self.is_connected():
+            self.light_on = -1
+            return
         if self.light_status == 3:
             now_utc = datetime.now(timezone.utc)
             start_time = now_utc.replace(hour=self.wake_hours_utc, minute=self.wake_minutes_utc,
@@ -101,9 +105,9 @@ class GreenBox:
 
             duration = timedelta(hours=self.hours_on, minutes=0)
             end_time = start_time + duration
-            self.light_on = start_time <= now_utc < end_time
+            self.light_on = int(start_time <= now_utc < end_time)
         else:
-            self.light_on = self.light_status == 1
+            self.light_on = int(self.light_status == 1)
     def create_7b_message(self, data, control_id):
         """ Create a formatted 7b message to send to device."""
         value_high = data >> 8

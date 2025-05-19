@@ -55,7 +55,7 @@ async def run_communication():
         while True:
             try:
                 command_task = asyncio.create_task(communicator.receive_command())
-                cmd, _ = await asyncio.wait({command_task}, timeout=2)
+                cmd, _ = await asyncio.wait({command_task}, timeout=1)
 
                 if command_task in cmd:
                     #command = command_task.result()
@@ -64,7 +64,7 @@ async def run_communication():
                 data = greenbox.get_data()
                 greenbox.update()
                 communicator.publish([data['water_lvl'], data['light_on'], data['is_connected']])
-                await asyncio.sleep(10)
+                await asyncio.sleep(9)
             except asyncio.CancelledError:
                 break
 
