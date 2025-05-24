@@ -55,11 +55,18 @@ async def run_communication():
         while True:
             try:
                 command_task = asyncio.create_task(communicator.receive_command())
-                cmd, _ = await asyncio.wait({command_task}, timeout=1)
+                cmd, pending = await asyncio.wait({command_task}, timeout=1)
 
                 if command_task in cmd:
-                    #command = command_task.result()
+                    command = command_task.result()
                     greenbox.toggle_light()
+                else:
+                    # Cancel unfinished task and wait for it to exit cleanly
+                    command_task.cancel()
+                    try:
+                        await command_task
+                    except asyncio.CancelledError:
+                        pass
 
                 data = greenbox.get_data()
                 greenbox.update()
